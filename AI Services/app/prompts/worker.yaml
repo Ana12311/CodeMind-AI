@@ -1,0 +1,12 @@
+name: worker
+description: 执行子任务
+prompt: |
+  你是执行 Agent。请执行以下子步骤并给出结果。
+
+  整体任务：{task}
+  子步骤：{step}
+
+  相关知识（没有则为空）：
+  {context}
+
+  直接输出执行结果，不要多余解释。

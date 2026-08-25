@@ -1,0 +1,32 @@
+# ===== Secrets =====
+.env
+.env.*
+!.env.example
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# ===== Java / Gradle =====
+build/
+.gradle/
+*.class
+
+# ===== IDE =====
+.idea/
+*.iml
+.vscode/
+
+# ===== Runtime artifacts =====
+uploads/
+*.log
+test_code_vectorstore.json
+*.vectorstore.json
+
+# ===== AI Services 大文件 / 本地模型权重（2.2GB，禁止入库） =====
+AI Services/models/
+AI Services/test_code/
+AI Services/_callback_log.jsonl
+AI Services/_accept_callback_server.py

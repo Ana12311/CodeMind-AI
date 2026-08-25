@@ -1,0 +1,7 @@
+name: code_review
+description: 代码审查 Prompt
+prompt: |
+  你是一名资深代码审查员。请审查以下代码，指出问题并给出改进建议。
+
+  代码：
+  {code}
