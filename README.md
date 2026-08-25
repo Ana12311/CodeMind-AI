@@ -147,7 +147,7 @@ Agent 工作流为明确线性流程，无自主循环：
 
 ## 8. 项目启动
 
-### Backend
+### 8.1 Backend（本地）
 
 ```bash
 cd "CodeMind AI Backend"
@@ -156,25 +156,60 @@ cd "CodeMind AI Backend"
 
 需先准备 MySQL、Redis，并执行 `src/main/resources/schema.sql` 建表，配置环境变量（见下）。
 
-### AI Service
+### 8.2 AI Service（本地）
 
 ```bash
 cd "AI Services"
+python -m venv .venv
+.venv/Scripts/activate           # Windows；Linux/macOS 用 source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-默认监听 8000 端口。
+默认监听 8000 端口，健康检查 `GET /health`。
+
+### 8.3 Backend（Docker）
+
+多阶段构建：Stage 1 用 `gradle:9.5.1-jdk17` 打 fat jar，Stage 2 用 `eclipse-temurin:17-jre` 运行。敏感配置全部通过环境变量注入，镜像内无写死的密码 / secret。
+
+```bash
+cd "CodeMind AI Backend"
+cp ../.env.example .env   # 填写 DB_PASSWORD / JWT_SECRET / INTERNAL_SECRET 等
+docker build -t codemind-backend .
+# 或一键编排 MySQL + Redis + App：
+docker compose up -d --build
+docker compose ps
+docker compose logs -f app
+docker compose down     # 停止并移除容器
+docker compose down -v  # 连带清空数据卷（谨慎）
+```
+
+> 说明：容器内 `localhost` 指向容器自身。开发环境本机 MySQL/Redis/FastAPI 用 `host.docker.internal` 访问（Docker Desktop Windows/Mac 支持）；生产环境改为实际服务地址或容器网络。
+
+### 8.4 AI Service（Docker）
+
+```bash
+cd "AI Services"
+cp ../.env.example .env   # 填写 DEEPSEEK_API_KEY / CALLBACK_URL 等
+docker compose up -d --build
+docker compose logs -f
+```
+
+bge-m3 模型走外部目录挂载（`./models/bge-m3` → 容器内 `/models/bge-m3`），不打进镜像。torch 用 CPU 构建，避免 PyPI 默认 CUDA 版拉取多 GB `nvidia_*` 依赖。
 
 ## 9. 环境配置
 
-环境变量统一由根目录 `.env.example` 提供占位模板，覆盖两个服务：
+环境变量统一由根目录 `.env.example` 提供单一占位模板，覆盖两个服务：
 
 - **MySQL / Redis**：`DB_*`、`REDIS_*`
 - **服务地址**：`SERVER_PORT`、`AI_SERVICE_URL`、`CALLBACK_URL`
-- **LLM**：`LLM_PROVIDER`、`DEEPSEEK_API_KEY`、`DEEPSEEK_BASE_URL`、`DEEPSEEK_MODEL`
-- **Vector 数据库**：`EMBEDDING_PROVIDER`、`EMBEDDING_MODEL_NAME`、`EMBEDDING_DIM`、`VECTORSTORE_PATH`、`CODE_VECTORSTORE_PATH`、`RAG_DOCS_DIR`、`RAG_TOP_K`、`RAG_MIN_SCORE`、`CODE_REVIEW_DIR`
 - **安全**：`JWT_SECRET`、`INTERNAL_SECRET`
+- **管理员初始化**：`ADMIN_USERNAME`、`ADMIN_PASSWORD`
+- **LLM**：`LLM_PROVIDER`、`DEEPSEEK_API_KEY`、`DEEPSEEK_BASE_URL`、`DEEPSEEK_MODEL`、`PROMPTS_DIR`
+- **RAG / 向量**：`EMBEDDING_PROVIDER`、`EMBEDDING_MODEL_NAME`、`EMBEDDING_DIM`、`CHUNK_SIZE`、`CHUNK_OVERLAP`、`VECTORSTORE_PATH`、`CODE_VECTORSTORE_PATH`、`RAG_DOCS_DIR`、`RAG_TOP_K`、`RAG_MIN_SCORE`、`CODE_REVIEW_DIR`、`CODE_REVIEW_QUERY`
+- **回调**：`CALLBACK_URL`、`CALLBACK_TIMEOUT`、`CALLBACK_RETRIES`、`CALLBACK_RETRY_DELAY`
+- **应用**：`APP_ENV`、`LOG_LEVEL`
+- **Docker 端口映射**：`MYSQL_HOST_PORT`、`REDIS_HOST_PORT`、`APP_HOST_PORT`
 
 Java 侧通过 `${VAR}` 占位符读取环境变量；Python 侧通过 pydantic-settings 读取 `.env` 与系统环境变量（环境变量优先）。
 
@@ -185,6 +220,7 @@ Java 侧通过 `${VAR}` 占位符读取环境变量；Python 侧通过 pydantic-
 - RAG 增强代码理解：结构感知的代码切片 + 向量检索，让 LLM 基于真实代码上下文审查。
 - 企业级权限设计：RBAC + JWT + 方法级权限控制 + 内部服务 HMAC 鉴权。
 - 多提供方抽象：LLM（mock / deepseek）与 Embedding（hashing / bge-m3）均可配置切换。
+- 双服务 Docker 化：Backend 多阶段构建，AI Service 模型外置挂载，配置全部环境变量注入。
 
 ## 文档
 

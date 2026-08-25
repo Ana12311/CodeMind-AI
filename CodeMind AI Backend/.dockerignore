@@ -1,0 +1,23 @@
+# 构建产物与本地缓存
+.gradle
+build
+
+# IDE
+.idea
+*.iml
+
+# VCS
+.git
+
+# 日志与密钥
+*.log
+.env
+.env.*
+*.secret
+*.key
+
+# 运行时上传文件
+uploads
+
+# 文档
+HELP.md
