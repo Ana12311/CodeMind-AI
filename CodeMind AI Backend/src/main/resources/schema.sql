@@ -167,7 +167,7 @@ ON DUPLICATE KEY UPDATE role_name = VALUES(role_name), description = VALUES(desc
 -- ---------------------------------------------------------------
 -- 初始化管理员账号（不再内置默认凭据）
 -- 管理员账号改由环境变量/启动脚本注入：
---   ADMIN_USERNAME / ADMIN_PASSWORD（BCrypt 密文）
+--   ADMIN_USERNAME / ADMIN_PASSWORD（明文，启动时由 AdminInitializer 使用 BCrypt 加密）
 -- 或通过注册接口 /api/v1/auth/register 创建后手动分配 ADMIN 角色。
 -- 禁止在本脚本提交任何真实密码或密文。
 -- ---------------------------------------------------------------
