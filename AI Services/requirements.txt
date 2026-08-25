@@ -5,3 +5,12 @@ pydantic-settings
 pyyaml
 openai
 httpx
+
+# bge-m3 语义 Embedding（与开发环境一致；模型运行时挂载，不进镜像）
+sentence-transformers==6.0.0
+transformers==5.15.1
+numpy==2.4.6
+tokenizers==0.22.2
+safetensors==0.8.0
+# torch 由 Dockerfile 单独装 CPU 构建（避免 PyPI 默认 CUDA 版拉取多 GB nvidia_* 依赖）；
+# 本地开发 pip install -r requirements.txt 时由 sentence-transformers 自动拉取 torch。

@@ -1,0 +1,38 @@
+# Python 缓存
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# 虚拟环境 / 本地依赖
+.venv/
+venv/
+
+# 环境与密钥（绝不进镜像）
+.env
+.env.*
+
+# 版本控制 / IDE
+.git/
+.idea/
+.vscode/
+
+# 测试 / 缓存 / 日志
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+logs/
+*.log
+
+# 模型权重（bge-m3 约 2.2GB，运行时卷挂载，不打进镜像）
+models/
+
+# 本地开发脚手架 / 测试样例
+test_code/
+test_code_vectorstore.json
+_accept_callback_server.py
+_callback_log.jsonl
+docs/
+
+# Docker 自身
+Dockerfile
+.dockerignore

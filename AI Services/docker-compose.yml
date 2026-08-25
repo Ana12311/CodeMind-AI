@@ -1,0 +1,17 @@
+services:
+  ai-service:
+    build: .
+    image: ai-service-python:0.1.0
+    container_name: ai-service
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env                # 密钥/通用配置（DEEPSEEK_API_KEY 等）
+    environment:
+      - EMBEDDING_PROVIDER=bge-m3
+      - EMBEDDING_MODEL_NAME=/models/bge-m3   # 覆盖 .env 的相对路径
+      - CALLBACK_URL=${CALLBACK_URL:-}
+      - VECTORSTORE_PATH=${VECTORSTORE_PATH:-}
+    volumes:
+      - ./models/bge-m3:/models/bge-m3:ro      # 外部模型挂载，不进镜像
+    restart: unless-stopped
