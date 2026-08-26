@@ -60,6 +60,15 @@ public class FileController {
     }
 
     /**
+     * 文件内容读取（用于前端 Monaco 代码查看器）
+     */
+    @GetMapping("/{id}/content")
+    @PreAuthorize("isAuthenticated()")
+    public Result<String> content(@PathVariable Long id) {
+        return Result.success(fileService.getFileContent(id));
+    }
+
+    /**
      * 删除文件（逻辑删除）
      */
     @DeleteMapping("/{id}")

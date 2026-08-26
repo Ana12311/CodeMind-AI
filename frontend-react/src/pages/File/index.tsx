@@ -16,7 +16,8 @@ import {
 } from 'antd'
 import { InboxOutlined, ReloadOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
-import { listFiles, uploadFile, getFile, deleteFile } from '@/api/file'
+import { listFiles, uploadFile, getFile, getFileContent, deleteFile } from '@/api/file'
+import CodeViewer from '@/components/CodeViewer'
 import { listProjects } from '@/api/project'
 import { handleRequestError, formatFileSize } from '@/utils'
 import type { FileItem } from '@/types/file'
@@ -45,6 +46,7 @@ function FilePage() {
   const [detail, setDetail] = useState<FileItem | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [detailContent, setDetailContent] = useState('')
 
   const fetchList = useCallback(async () => {
     setLoading(true)
@@ -103,10 +105,13 @@ function FilePage() {
 
   const handleView = async (id: string) => {
     setDetailLoading(true)
+    setDetailContent('')
     try {
       const f = await getFile(id)
       setDetail(f)
       setDetailOpen(true)
+      const content = await getFileContent(id).catch(() => '')
+      setDetailContent(content ?? '')
     } catch (error) {
       handleRequestError(error)
     } finally {
@@ -264,14 +269,19 @@ function FilePage() {
         onCancel={() => setDetailOpen(false)}
       >
         {detail && (
-          <Descriptions column={1} bordered size="small">
-            <Descriptions.Item label="文件名">{detail.fileName}</Descriptions.Item>
-            <Descriptions.Item label="类型">{detail.fileType || '-'}</Descriptions.Item>
-            <Descriptions.Item label="大小">{formatFileSize(detail.fileSize)}</Descriptions.Item>
-            <Descriptions.Item label="存储地址">{detail.storageUrl || '-'}</Descriptions.Item>
-            <Descriptions.Item label="checksum">{detail.checksum || '-'}</Descriptions.Item>
-            <Descriptions.Item label="上传时间">{detail.createTime || '-'}</Descriptions.Item>
-          </Descriptions>
+          <>
+            <Descriptions column={1} bordered size="small">
+              <Descriptions.Item label="文件名">{detail.fileName}</Descriptions.Item>
+              <Descriptions.Item label="类型">{detail.fileType || '-'}</Descriptions.Item>
+              <Descriptions.Item label="大小">{formatFileSize(detail.fileSize)}</Descriptions.Item>
+              <Descriptions.Item label="存储地址">{detail.storageUrl || '-'}</Descriptions.Item>
+              <Descriptions.Item label="checksum">{detail.checksum || '-'}</Descriptions.Item>
+              <Descriptions.Item label="上传时间">{detail.createTime || '-'}</Descriptions.Item>
+            </Descriptions>
+            <div style={{ height: 320, marginTop: 12 }}>
+              <CodeViewer code={detailContent} fileName={detail.fileName} height="100%" />
+            </div>
+          </>
         )}
       </Modal>
     </div>

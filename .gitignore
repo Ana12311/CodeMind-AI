@@ -25,6 +25,10 @@ uploads/
 test_code_vectorstore.json
 *.vectorstore.json
 
+# 与 AI 服务共享的代码评审目录：上传文件运行时同步到此，不入库；仅保留 .gitkeep 占位
+codes/*
+!codes/.gitkeep
+
 # ===== AI Services 大文件 / 本地模型权重（2.2GB，禁止入库） =====
 AI Services/models/
 AI Services/test_code/

@@ -103,8 +103,11 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       AI_TASK_REAPER_TIMEOUT_SECONDS: ${AI_TASK_REAPER_TIMEOUT_SECONDS:-300}
       AI_TASK_REAPER_INTERVAL_MS: ${AI_TASK_REAPER_INTERVAL_MS:-60000}
+      # 与 AI 服务共享的代码评审目录（上传文件同步到这里供 CODE_REVIEW 检索）
+      CODE_SYNC_DIR: /app/code
     volumes:
       - backend-uploads:/app/uploads
+      - ./codes:/app/code
     depends_on:
       mysql:
         condition: service_healthy

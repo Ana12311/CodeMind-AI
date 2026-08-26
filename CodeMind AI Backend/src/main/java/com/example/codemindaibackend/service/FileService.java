@@ -23,6 +23,11 @@ public interface FileService {
     FileVO getFile(Long id);
 
     /**
+     * 读取文件内容（小文本文件取 DB content，大文件回退存储加载）
+     */
+    String getFileContent(Long id);
+
+    /**
      * 上传文件并保存信息
      */
     FileVO upload(MultipartFile file, Long projectId);

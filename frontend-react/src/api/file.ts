@@ -34,6 +34,11 @@ export function getFile(id: string): Promise<FileItem> {
   return http<FileItem>({ method: 'get', url: `/v1/files/${id}` })
 }
 
+// 文件内容：GET /api/v1/files/{id}/content（用于 Monaco 代码查看器）
+export function getFileContent(id: string): Promise<string> {
+  return http<string>({ method: 'get', url: `/v1/files/${id}/content` })
+}
+
 // 删除文件（逻辑删除）：DELETE /api/v1/files/{id}
 export function deleteFile(id: string): Promise<void> {
   return http<void>({ method: 'delete', url: `/v1/files/${id}` })

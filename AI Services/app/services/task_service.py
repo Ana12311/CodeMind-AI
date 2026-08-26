@@ -60,17 +60,9 @@ class TaskService:
     @property
     def code_review_rag(self):
         if self._code_rag is None:
-            from app.config.config import get_settings
             from app.rag import build_code_review_rag
 
-            settings = get_settings()
-            builder = build_code_review_rag()
-            if settings.code_review_dir:
-                try:
-                    builder.ingest(settings.code_review_dir)
-                except Exception as exc:
-                    logger.warning("代码入库失败，CODE_REVIEW 降级为无代码上下文: %s", exc)
-            self._code_rag = builder
+            self._code_rag = build_code_review_rag()
         return self._code_rag
 
     def create_task(self, request: TaskCreateRequest) -> TaskCreateResponse:
@@ -125,6 +117,11 @@ class TaskService:
         settings = get_settings()
         if not settings.code_review_dir:
             return ""
+        # 每次评审前重建向量库，拾取新上传的代码文件（上传与评审共享同一目录）
+        try:
+            self.code_review_rag.ingest(settings.code_review_dir)
+        except Exception as exc:
+            logger.warning("代码入库失败，CODE_REVIEW 降级为无代码上下文: %s", exc)
         return self.code_review_rag.retrieve(settings.code_review_query)
 
     def _set_status(self, task_id: int, status: str) -> None:

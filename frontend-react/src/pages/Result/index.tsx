@@ -20,6 +20,7 @@ import CodeViewer from '@/components/CodeViewer'
 import { getReviewResult, listReviewResults } from '@/api/result'
 import { getTask } from '@/api/task'
 import { listProjects } from '@/api/project'
+import { listFiles, getFileContent } from '@/api/file'
 import { handleRequestError } from '@/utils'
 import { parseReviewDetail, parseLineNumber } from '@/types/result'
 import type { ReviewDetail } from '@/types/result'
@@ -55,6 +56,8 @@ function ResultPage() {
   const [detail, setDetail] = useState<ReviewDetail | null>(null)
   const [activeLine, setActiveLine] = useState<number>()
   const [projectMap, setProjectMap] = useState<Record<string, string>>({})
+  const [code, setCode] = useState('')
+  const [codeFileName, setCodeFileName] = useState('')
 
   useEffect(() => {
     listProjects({ pageNum: 1, pageSize: 100 })
@@ -114,6 +117,31 @@ function ResultPage() {
   const approved = detail?.review?.approved
   const projectId = result?.projectId ?? task?.projectId
   const projectName = projectId ? (projectMap[projectId] ?? projectId) : '-'
+  const targetFileName = issues[0]?.file
+
+  // 加载与首个问题匹配的代码文件原文，供 Monaco 展示
+  useEffect(() => {
+    if (!projectId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const files = await listFiles({ projectId, pageNum: 1, pageSize: 100 })
+        const match =
+          files.records.find((f) => f.fileName === targetFileName) ?? files.records[0]
+        if (!match || cancelled) return
+        const content = await getFileContent(match.id)
+        if (!cancelled) {
+          setCode(content ?? '')
+          setCodeFileName(match.fileName ?? targetFileName ?? '')
+        }
+      } catch {
+        /* 内容加载失败不阻断结果展示 */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [projectId, targetFileName])
 
   if (loading) {
     return (
@@ -201,14 +229,13 @@ function ResultPage() {
         {/* 左侧：代码查看 */}
         <Col span={14}>
           <Card title="代码" size="small" styles={{ body: { height: 560, padding: 12 } }}>
-            <Alert
-              type="warning"
-              showIcon
-              message="后端未提供文件内容读取接口，暂无法加载代码原文"
-              style={{ marginBottom: 12 }}
-            />
-            <div style={{ height: 490 }}>
-              <CodeViewer fileName={issues[0]?.file} activeLine={activeLine} height="100%" />
+            <div style={{ height: 520 }}>
+              <CodeViewer
+                code={code}
+                fileName={codeFileName || issues[0]?.file}
+                activeLine={activeLine}
+                height="100%"
+              />
             </div>
           </Card>
         </Col>

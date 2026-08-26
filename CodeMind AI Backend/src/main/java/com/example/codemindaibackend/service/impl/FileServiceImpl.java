@@ -14,17 +14,24 @@ import com.example.codemindaibackend.service.FileService;
 import com.example.codemindaibackend.service.ProjectService;
 import com.example.codemindaibackend.service.StorageService;
 import com.example.codemindaibackend.vo.file.FileVO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -35,15 +42,25 @@ import java.util.stream.Collectors;
 @Service
 public class FileServiceImpl extends ServiceImpl<CodeFileMapper, CodeFile> implements FileService {
 
+    private static final Logger log = LoggerFactory.getLogger(FileServiceImpl.class);
+
     /** 上传大小上限：10MB */
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024L;
 
     /** 直存内容的小文本文件阈值：512KB */
     private static final int MAX_TEXT_CONTENT_SIZE = 512 * 1024;
 
+    /** 同步到 AI 评审共享目录的代码文件扩展名（与 FastAPI CodeLoader 支持一致） */
+    private static final Set<String> CODE_SYNC_EXTENSIONS = Set.of(
+            ".java", ".py", ".js", ".ts", ".kt", ".go", ".cs", ".cpp", ".c", ".h");
+
     private final ProjectService projectService;
 
     private final StorageService storageService;
+
+    /** 与 AI 服务共享的代码目录（挂载同一宿主目录），空=不同步 */
+    @Value("${code.sync-dir:}")
+    private String codeSyncDir;
 
     public FileServiceImpl(ProjectService projectService, StorageService storageService) {
         this.projectService = projectService;
@@ -86,6 +103,21 @@ public class FileServiceImpl extends ServiceImpl<CodeFileMapper, CodeFile> imple
     }
 
     @Override
+    public String getFileContent(Long id) {
+        CodeFile file = getById(id);
+        if (file == null) {
+            throw BusinessException.notFound("文件不存在");
+        }
+        projectService.checkProjectAccess(file.getProjectId());
+        // 小文本文件直存于 DB，大文件回退存储读取
+        if (StringUtils.hasText(file.getContent())) {
+            return file.getContent();
+        }
+        byte[] bytes = storageService.load(file.getFilePath());
+        return new String(bytes, StandardCharsets.UTF_8);
+    }
+
+    @Override
     public FileVO upload(MultipartFile file, Long projectId) {
         if (file == null || file.isEmpty()) {
             throw new BusinessException("上传文件不能为空");
@@ -117,6 +149,8 @@ public class FileServiceImpl extends ServiceImpl<CodeFileMapper, CodeFile> imple
                 codeFile.setContent(new String(bytes, StandardCharsets.UTF_8));
             }
             save(codeFile);
+            // 同步到 AI 评审共享目录，打通「上传 → 评审」链路
+            syncToCodeDir(projectId, file.getOriginalFilename(), bytes);
             return toVO(codeFile);
         } catch (BusinessException e) {
             throw e;
@@ -135,6 +169,38 @@ public class FileServiceImpl extends ServiceImpl<CodeFileMapper, CodeFile> imple
         removeById(id);
         // 委托存储抽象删除物理文件
         storageService.delete(file.getFilePath());
+    }
+
+    /**
+     * 将上传的代码文件同步到与 AI 服务共享的评审目录（按项目分目录，保留原始文件名）。
+     * 未配置 code.sync-dir 或非代码文件时跳过；失败仅告警，不阻断上传。
+     */
+    private void syncToCodeDir(Long projectId, String fileName, byte[] bytes) {
+        if (!StringUtils.hasText(codeSyncDir)) {
+            return;
+        }
+        String ext = extractExtension(fileName);
+        if (!CODE_SYNC_EXTENSIONS.contains(ext)) {
+            return;
+        }
+        // 仅取文件名（去路径分隔符），防目录穿越
+        String safeName = fileName.replace('\\', '/');
+        int slash = safeName.lastIndexOf('/');
+        safeName = slash >= 0 ? safeName.substring(slash + 1) : safeName;
+        if (!StringUtils.hasText(safeName) || ".".equals(safeName) || "..".equals(safeName)) {
+            return;
+        }
+        Path baseDir = Paths.get(codeSyncDir).toAbsolutePath().normalize();
+        Path target = baseDir.resolve(String.valueOf(projectId)).resolve(safeName).normalize();
+        if (!target.startsWith(baseDir)) {
+            return;
+        }
+        try {
+            Files.createDirectories(target.getParent());
+            Files.write(target, bytes);
+        } catch (IOException e) {
+            log.warn("代码同步到评审目录失败: {}", target, e);
+        }
     }
 
     /**
