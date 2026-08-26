@@ -3,32 +3,45 @@ import axios from 'axios'
 import { Button, Card, Form, Input, Typography, message } from 'antd'
 import { UserOutlined, LockOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
-import { http } from '@/api/request'
+import { login as loginApi, fetchCurrentUser } from '@/api/auth'
 import { useAuthStore } from '@/store/auth'
-import type { LoginRequest, LoginResponse } from '@/types'
+import type { ApiResult } from '@/types'
+import type { LoginRequest, User } from '@/types/user'
 
 function Login() {
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
-  const setToken = useAuthStore((state) => state.setToken)
-  const setUser = useAuthStore((state) => state.setUser)
 
   const onFinish = async (values: LoginRequest) => {
     setLoading(true)
     try {
-      const data = await http<LoginResponse>({
-        method: 'post',
-        url: '/v1/auth/login',
-        data: values,
-      })
-      setToken(data.accessToken)
-      setUser({ username: values.username })
+      const { accessToken } = await loginApi(values)
+
+      // 先落 token，使后续 /me 携带鉴权头；再用表单用户名占位用户信息
+      useAuthStore.getState().setToken(accessToken)
+      useAuthStore.getState().setUser({ id: '', username: values.username } as User)
+
+      try {
+        const me = await fetchCurrentUser()
+        useAuthStore.getState().setUser(me)
+      } catch {
+        // 拉取用户详情失败不阻断登录，重新确保 token 仍在（避免被 401 拦截器登出）
+        useAuthStore.getState().setToken(accessToken)
+      }
+
       message.success('登录成功')
       navigate('/dashboard', { replace: true })
     } catch (error) {
-      // 业务/HTTP 错误已由拦截器提示，这里只兜底网络异常
-      if (axios.isAxiosError(error) && !error.response) {
-        message.error('网络异常，请检查后端服务是否启动')
+      if (axios.isAxiosError(error)) {
+        if (!error.response) {
+          message.error('网络异常，请检查后端服务是否启动')
+        } else if (error.response.status === 401) {
+          message.error((error.response.data as ApiResult)?.message || '用户名或密码错误')
+        } else {
+          message.error((error.response.data as ApiResult)?.message || '登录失败')
+        }
+      } else {
+        message.error('登录失败')
       }
     } finally {
       setLoading(false)
