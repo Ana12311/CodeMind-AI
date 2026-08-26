@@ -2,10 +2,10 @@
 
 ## 1. 整体架构
 
-CodeMind AI 由两个独立服务组成，通过 HTTP 协作：
+CodeMind AI 由三个独立服务组成，通过 HTTP 协作：
 
 ```
-Frontend（未来）
+Frontend（React / Nginx）
     ↓ HTTP
 CodeMind AI Backend（Java 17 / Spring Boot）
     ↓ HTTP（提交任务）
@@ -14,6 +14,7 @@ AI Services（Python / FastAPI）
 CodeMind AI Backend（保存结果）
 ```
 
+- **Frontend**：React 单页应用，负责交互与结果可视化（Monaco 高亮定位），Nginx 托管并反代 `/api`。
 - **CodeMind AI Backend**：业务系统，对外提供 REST API，管理用户、权限、项目、文件、AI 任务与审查结果。
 - **AI Services**：AI 执行系统，接收任务后异步执行 Agent 工作流 + RAG，完成后回调业务系统保存结果。
 

@@ -1,15 +1,15 @@
 # 部署与启动
 
-支持本地源码运行与 Docker 部署两种方式。两个服务均已 Docker 化。
+支持本地源码运行与 Docker 部署两种方式。三个服务均已 Docker 化。
 
 ## 0. 总控编排（推荐）
 
-根目录 `docker-compose.yml` 一条命令启动完整系统（MySQL + Redis + Backend + AI Service），四个服务加入同一 `codemind-network` 网络，容器内互访用服务名（禁止 localhost）。
+根目录 `docker-compose.yml` 一条命令启动完整系统（MySQL + Redis + Backend + AI Service + Frontend），五个服务加入同一 `codemind-network` 网络，容器内互访用服务名（禁止 localhost）。
 
 ```bash
 cp .env.example .env      # 填写 DB_PASSWORD / JWT_SECRET / INTERNAL_SECRET / ADMIN_PASSWORD 等
 docker compose up -d --build
-docker compose ps          # 确认 4 个服务 running
+docker compose ps          # 确认 5 个服务 running
 docker compose logs -f backend
 docker compose down        # 停止；down -v 连数据卷一起清空（谨慎）
 ```
@@ -18,15 +18,16 @@ docker compose down        # 停止；down -v 连数据卷一起清空（谨慎�
 
 | 服务 | 容器名 | 宿主机端口 | 容器内地址 |
 |------|--------|-----------|-----------|
-| mysql | codemind-mysql | `${MYSQL_HOST_PORT:-3306}` | `mysql:3306` |
-| redis | codemind-redis | `${REDIS_HOST_PORT:-6379}` | `redis:6379` |
+| frontend | codemind-frontend | `${FRONTEND_HOST_PORT:-80}` | `frontend:80` |
 | backend | codemind-backend | `${APP_HOST_PORT:-8080}` | `backend:8080` |
 | ai-service | codemind-ai-service | `${AI_HOST_PORT:-8000}` | `ai-service:8000` |
+| mysql | codemind-mysql | `${MYSQL_HOST_PORT:-3306}` | `mysql:3306` |
+| redis | codemind-redis | `${REDIS_HOST_PORT:-6379}` | `redis:6379` |
 
 要点：
 
 - Backend 通过 `AI_SERVICE_URL=http://ai-service:8000` 提交任务；AI Service 通过 `CALLBACK_URL=http://backend:8080/api/ai/task/callback` 回调。
-- bge-m3 模型宿主机挂载：`./AI Services/models` → 容器 `/models`，`EMBEDDING_MODEL_NAME=/models/bge-m3`（约 2.2GB，不进镜像）。
+- Embedding 默认 `hashing`（离线零依赖）；切换 `bge-m3` 需先下载模型 `huggingface-cli download BAAI/bge-m3 --local-dir "AI Services/models/bge-m3"`，再改 `.env` 的 `EMBEDDING_PROVIDER=bge-m3`。模型约 2.2GB，宿主机挂载 `./AI Services/models` → 容器 `/models`（不进镜像）。
 - RAG 文档挂载：`./AI Services/docs` → `/app/docs`，`RAG_DOCS_DIR=docs`（启动自动入库）。
 - 代码审查代码挂载：`./codes` → `/code`，`CODE_REVIEW_DIR=/code`（空则不启用代码入库）。
 - 宿主机已跑原生 MySQL/Redis/AI 服务时，改 `MYSQL_HOST_PORT` / `REDIS_HOST_PORT` / `AI_HOST_PORT` 避开端口冲突。

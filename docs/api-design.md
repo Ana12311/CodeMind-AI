@@ -1,6 +1,6 @@
 # 接口设计
 
-统一响应结构 `Result<T>`：`{code, message, data}`；分页结构 `PageResult<T>`：`{list, total, pageNum, pageSize}`。
+统一响应结构 `Result<T>`：`{code, message, data, timestamp}`；分页结构 `PageResult<T>`：`{list, total, pageNum, pageSize}`。
 
 鉴权方式：
 
@@ -40,6 +40,7 @@
 | POST | `/upload` | 文件上传（multipart，含 projectId） |
 | GET | `/` | 分页查询文件 |
 | GET | `/{id}` | 文件详情 |
+| GET | `/{id}/content` | 文件内容 / 下载 |
 | DELETE | `/{id}` | 删除文件（逻辑删除） |
 
 ## 4. AI 任务接口
