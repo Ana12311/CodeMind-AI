@@ -169,7 +169,7 @@ function TaskPage() {
             <Button
               type="link"
               size="small"
-              onClick={() => (window.location.href = `/result?id=${record.resultId}`)}
+              onClick={() => (window.location.href = `/result?taskId=${record.id}`)}
             >
               查看结果
             </Button>
