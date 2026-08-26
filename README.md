@@ -118,6 +118,14 @@ LLM Review（基于真实代码上下文生成审查报告）
 - `hashing`（默认）：本地特征哈希 + L2 归一化，无外部依赖、离线可用。
 - `bge-m3`：sentence-transformers 语义模型，支持中文需求 ↔ 英文代码的跨语言检索。
 
+> 默认 `hashing` 开箱即用，无需任何模型。切换 bge-m3 语义检索需先下载模型（`AI Services/models/` 已 gitignore，不入库）：
+>
+> ```bash
+> huggingface-cli download BAAI/bge-m3 --local-dir "AI Services/models/bge-m3"
+> ```
+>
+> 下载后把 `.env` 中的 `EMBEDDING_PROVIDER` 改为 `bge-m3`，重启即可。
+
 ### Vector Search
 
 向量存储为**进程内余弦相似度检索 + JSON 文件持久化**，非外部向量数据库服务。支持通用文档检索（`RAG_DOCS_DIR`）与代码检索（`CODE_REVIEW_DIR`）两套向量库，分别配置 top_k 与相似度阈值。
@@ -263,6 +271,37 @@ docker compose down -v             # 连带删除数据卷（谨慎）
 | Redis | codemind-redis | 6379 |
 
 > 端口冲突时，通过 `.env` 中的 `FRONTEND_HOST_PORT` / `APP_HOST_PORT` / `AI_HOST_PORT` / `MYSQL_HOST_PORT` / `REDIS_HOST_PORT` 调整映射。
+
+### 本地开发运行（逐个服务）
+
+> 前置：本机启动 MySQL 8、Redis 7，执行 `CodeMind AI Backend/src/main/resources/schema.sql` 建表，并配置好 `.env`。
+
+**Backend**
+
+```bash
+cd "CodeMind AI Backend"
+./gradlew bootRun
+```
+
+**AI Service**
+
+```bash
+cd "AI Services"
+python -m venv .venv
+.venv/Scripts/activate            # Windows；Linux/macOS 用 source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+**Frontend**
+
+```bash
+cd frontend-react
+npm install
+npm run dev
+```
+
+开发端口：前端 5173（`/api` 代理到 8080）、后端 8080、AI 服务 8000。
 
 ---
 
