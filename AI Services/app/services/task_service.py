@@ -53,6 +53,7 @@ class TaskService:
                 settings.callback_timeout,
                 retries=settings.callback_retries,
                 retry_delay=settings.callback_retry_delay,
+                internal_secret=settings.internal_secret,
             )
         return self._callback
 

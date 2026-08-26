@@ -26,6 +26,9 @@ RUN groupadd -r app && useradd -r -g app app
 # 复制可执行 fat jar（bootJar 产物唯一）
 COPY --from=builder /app/build/libs/*.jar app.jar
 
+# 上传目录（非 root 用户 app 需可写）
+RUN mkdir -p /app/uploads && chown -R app:app /app/uploads
+
 # 端口
 EXPOSE 8080
 

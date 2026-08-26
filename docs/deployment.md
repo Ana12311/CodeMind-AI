@@ -2,6 +2,39 @@
 
 支持本地源码运行与 Docker 部署两种方式。两个服务均已 Docker 化。
 
+## 0. 总控编排（推荐）
+
+根目录 `docker-compose.yml` 一条命令启动完整系统（MySQL + Redis + Backend + AI Service），四个服务加入同一 `codemind-network` 网络，容器内互访用服务名（禁止 localhost）。
+
+```bash
+cp .env.example .env      # 填写 DB_PASSWORD / JWT_SECRET / INTERNAL_SECRET / ADMIN_PASSWORD 等
+docker compose up -d --build
+docker compose ps          # 确认 4 个服务 running
+docker compose logs -f backend
+docker compose down        # 停止；down -v 连数据卷一起清空（谨慎）
+```
+
+服务与端口（宿主机 → 容器）：
+
+| 服务 | 容器名 | 宿主机端口 | 容器内地址 |
+|------|--------|-----------|-----------|
+| mysql | codemind-mysql | `${MYSQL_HOST_PORT:-3306}` | `mysql:3306` |
+| redis | codemind-redis | `${REDIS_HOST_PORT:-6379}` | `redis:6379` |
+| backend | codemind-backend | `${APP_HOST_PORT:-8080}` | `backend:8080` |
+| ai-service | codemind-ai-service | `${AI_HOST_PORT:-8000}` | `ai-service:8000` |
+
+要点：
+
+- Backend 通过 `AI_SERVICE_URL=http://ai-service:8000` 提交任务；AI Service 通过 `CALLBACK_URL=http://backend:8080/api/ai/task/callback` 回调。
+- bge-m3 模型宿主机挂载：`./AI Services/models` → 容器 `/models`，`EMBEDDING_MODEL_NAME=/models/bge-m3`（约 2.2GB，不进镜像）。
+- RAG 文档挂载：`./AI Services/docs` → `/app/docs`，`RAG_DOCS_DIR=docs`（启动自动入库）。
+- 代码审查代码挂载：`./codes` → `/code`，`CODE_REVIEW_DIR=/code`（空则不启用代码入库）。
+- 宿主机已跑原生 MySQL/Redis/AI 服务时，改 `MYSQL_HOST_PORT` / `REDIS_HOST_PORT` / `AI_HOST_PORT` 避开端口冲突。
+- MySQL 首启自动执行 `schema.sql` 建库建表 + 角色种子；Backend 首启自动创建管理员（`ADMIN_USERNAME` / `ADMIN_PASSWORD`）。
+- 四个服务均配置 healthcheck，Backend 依赖 mysql / redis / ai-service 就绪后启动，避免启动顺序错误。
+
+以下各节为分服务本地运行与单独 Docker 部署，均已被总控编排覆盖。
+
 ## 1. 前置条件
 
 ### 本地运行

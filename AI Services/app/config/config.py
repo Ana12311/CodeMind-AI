@@ -43,12 +43,18 @@ class Settings(BaseSettings):
     code_review_dir: str = ""  # 项目代码目录，空=不启用代码入库
     code_vectorstore_path: str = ""  # 代码向量库持久化路径，空=纯内存
     code_review_query: str = "分析代码中的安全问题、设计问题、性能问题"
+    # 代码检索最低相似度阈值：跨语言（中文查询 vs 英文代码）通用查询实测 0.3~0.45，
+    # 低于通用文档检索阈值（0.5），否则代码检索恒为空。
+    code_review_min_score: float = 0.3
 
     # 回调（Spring Boot）
     callback_url: str = ""  # 结果回调地址，空=不回调
     callback_timeout: float = 10.0
     callback_retries: int = 3  # 回调失败重试次数
     callback_retry_delay: float = 1.0  # 重试间隔（秒）
+
+    # 内部服务 HMAC 密钥（回调签名，与后端 InternalAuthFilter 一致）
+    internal_secret: str = ""  # 空=回调不加签名（仅本地调试）
 
     @property
     def is_production(self) -> bool:

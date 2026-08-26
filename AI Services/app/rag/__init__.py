@@ -70,5 +70,5 @@ def build_code_review_rag() -> "CodeReviewContextBuilder":
         store=store,
         store_path=settings.code_vectorstore_path,
         top_k=settings.rag_top_k,
-        min_score=settings.rag_min_score,
+        min_score=settings.code_review_min_score,
     )

@@ -1,0 +1,161 @@
+# =============================================================
+# CodeMind AI — 总控编排：一条命令启动完整系统
+#
+#   mysql + redis + backend + ai-service
+#
+# 敏感值（密码 / secret / API key）一律通过根目录 .env 注入，不写死。
+# 使用前：cp .env.example .env 并填写真实值。
+#
+#   启动：docker compose up -d --build
+#   状态：docker compose ps
+#   日志：docker compose logs -f [backend|ai-service|mysql|redis]
+#   停止：docker compose down            # 停止并移除容器（保留数据卷）
+#   清空：docker compose down -v         # 连带删除数据卷（谨慎）
+#
+# 容器内互访一律使用服务名（禁止 localhost）：
+#   backend  ->  mysql / redis / ai-service
+#   ai-service ->  backend（回调）
+# =============================================================
+
+name: codemind
+
+networks:
+  codemind-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  redis-data:
+  backend-uploads:
+
+services:
+  # -----------------------------------------------------------
+  # MySQL：业务数据库，首启自动执行 schema.sql 建库建表 + 角色种子
+  # -----------------------------------------------------------
+  mysql:
+    image: mysql:8.0
+    container_name: codemind-mysql
+    restart: unless-stopped
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME:-codemind}
+    ports:
+      - "${MYSQL_HOST_PORT:-3306}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./CodeMind AI Backend/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${DB_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - codemind-network
+
+  # -----------------------------------------------------------
+  # Redis：缓存 / 令牌，AOF 持久化
+  # -----------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: codemind-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_HOST_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - codemind-network
+
+  # -----------------------------------------------------------
+  # Backend（Java / Spring Boot）：业务系统，8080
+  # 依赖 mysql / redis 就绪（healthy），且 ai-service 就绪后再启动
+  # -----------------------------------------------------------
+  backend:
+    build:
+      context: "./CodeMind AI Backend"
+    image: codemind-backend:latest
+    container_name: codemind-backend
+    restart: unless-stopped
+    ports:
+      - "${APP_HOST_PORT:-8080}:8080"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-codemind}
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DATABASE: 0
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      JWT_SECRET: ${JWT_SECRET}
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      AI_SERVICE_URL: http://ai-service:8000
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    volumes:
+      - backend-uploads:/app/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ai-service:
+        condition: service_healthy
+    # Backend 无 HTTP 健康接口（无 actuator/health controller），用 TCP 端口探测
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080 && echo ok || exit 1'"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+    networks:
+      - codemind-network
+
+  # -----------------------------------------------------------
+  # AI Service（Python / FastAPI）：AI 执行，8000
+  # bge-m3 模型宿主机挂载（不进镜像）；回调 backend 用服务名
+  # -----------------------------------------------------------
+  ai-service:
+    build:
+      context: "./AI Services"
+    image: ai-service-python:0.1.0
+    container_name: codemind-ai-service
+    restart: unless-stopped
+    ports:
+      - "${AI_HOST_PORT:-8000}:8000"
+    environment:
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-chat}
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-bge-m3}
+      EMBEDDING_MODEL_NAME: /models/bge-m3
+      RAG_DOCS_DIR: ${RAG_DOCS_DIR:-docs}
+      CODE_REVIEW_DIR: ${CODE_REVIEW_DIR:-}
+      INTERNAL_SECRET: ${INTERNAL_SECRET:-}
+      CALLBACK_URL: http://backend:8080/api/ai/task/callback
+      VECTORSTORE_PATH: ${VECTORSTORE_PATH:-}
+      CODE_VECTORSTORE_PATH: ${CODE_VECTORSTORE_PATH:-}
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./AI Services/models:/models:ro
+      - ./AI Services/docs:/app/docs:ro
+      - ./codes:/code:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - codemind-network
