@@ -10,6 +10,7 @@ import com.example.codemindaibackend.service.AiTaskService;
 import com.example.codemindaibackend.vo.ai.TaskVO;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -88,5 +89,15 @@ public class AiTaskController {
     @PutMapping("/{id}/result")
     public Result<TaskVO> saveResult(@PathVariable Long id, @Valid @RequestBody TaskResultUpdateRequest request) {
         return Result.success(aiTaskService.saveResult(id, request));
+    }
+
+    /**
+     * 删除任务（中断运行中的进程 + 逻辑删除记录 + 级联删除结果）
+     */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
+    public Result<Void> delete(@PathVariable Long id) {
+        aiTaskService.deleteTask(id);
+        return Result.success(null);
     }
 }

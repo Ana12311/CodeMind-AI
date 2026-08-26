@@ -4,7 +4,7 @@ import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
-from app.agents.workflow import AgentWorkflow
+from app.agents.workflow import AgentWorkflow, TaskCancelled
 from app.models.task import TaskCreateRequest, TaskCreateResponse
 from app.services.callback_service import CallbackService
 
@@ -31,6 +31,7 @@ class TaskService:
         self._callback = callback
         self._code_rag = None
         self._tasks: dict[int, str] = {}
+        self._cancelled: set[int] = set()
         self._lock = threading.Lock()
         self._executor = ThreadPoolExecutor(max_workers=4)
 
@@ -80,9 +81,25 @@ class TaskService:
         with self._lock:
             return self._tasks.get(task_id)
 
+    def cancel_task(self, task_id: int) -> bool:
+        """标记任务取消，供后端「删除任务 / 中断进程」调用。返回是否成功标记。"""
+        with self._lock:
+            if task_id not in self._tasks:
+                return False
+            self._cancelled.add(task_id)
+            self._tasks[task_id] = STATUS_FAILED
+            return True
+
+    def is_cancelled(self, task_id: int) -> bool:
+        with self._lock:
+            return task_id in self._cancelled
+
     def _execute(self, request: TaskCreateRequest) -> None:
         task_id = request.taskId
         try:
+            if self.is_cancelled(task_id):
+                logger.info("任务已取消，跳过执行 taskId=%s", task_id)
+                return
             context = ""
             if request.taskType.upper() == "CODE_REVIEW":
                 context = self._build_code_context()
@@ -94,6 +111,7 @@ class TaskService:
                 task=request.content,
                 task_type=request.taskType,
                 context=context,
+                should_stop=lambda: self.is_cancelled(task_id),
             )
             status = _WORKFLOW_STATUS_MAP.get(result.status, STATUS_FAILED)
             result_payload = result.model_dump()
@@ -102,6 +120,9 @@ class TaskService:
             if not self.callback.send(task_id, status, result_payload):
                 logger.error("回调失败，任务标记 FAILED taskId=%s", request.taskId)
                 self._set_status(task_id, STATUS_FAILED)
+        except TaskCancelled:
+            logger.info("任务被中断 taskId=%s", request.taskId)
+            self._set_status(task_id, STATUS_FAILED)
         except Exception as exc:
             logger.exception("任务执行失败 taskId=%s", request.taskId)
             self._set_status(task_id, STATUS_FAILED)

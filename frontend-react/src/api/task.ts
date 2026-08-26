@@ -18,6 +18,11 @@ export function getTask(id: string): Promise<Task> {
   return http<Task>({ method: 'get', url: `/v1/ai-tasks/${id}` })
 }
 
+// 删除任务（中断运行中的进程 + 逻辑删除）：DELETE /api/v1/ai-tasks/{id}
+export function deleteTask(id: string): Promise<void> {
+  return http<void>({ method: 'delete', url: `/v1/ai-tasks/${id}` })
+}
+
 // 任务关联的审查结果：task.resultId → GET /api/v1/ai-reviews/{resultId}
 export function getTaskResult(resultId: string): Promise<ReviewResult> {
   return http<ReviewResult>({ method: 'get', url: `/v1/ai-reviews/${resultId}` })

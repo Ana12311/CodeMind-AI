@@ -60,4 +60,23 @@ public class AiServiceClient {
         log.info("AI 服务提交成功: taskId={}, status={}", taskId, status);
         return status;
     }
+
+    /**
+     * 中断运行中的任务（供删除任务时调用）。尽力而为，失败不抛出，由上层处理。
+     *
+     * @param taskId AI 任务 ID
+     */
+    public void cancelTask(Long taskId) {
+        try {
+            webClient.post()
+                    .uri("/api/tasks/" + taskId + "/cancel")
+                    .retrieve()
+                    .bodyToMono(Void.class)
+                    .timeout(TIMEOUT)
+                    .block();
+            log.info("AI 任务取消成功: taskId={}", taskId);
+        } catch (Exception e) {
+            log.warn("AI 任务取消失败: taskId={}", taskId, e);
+        }
+    }
 }

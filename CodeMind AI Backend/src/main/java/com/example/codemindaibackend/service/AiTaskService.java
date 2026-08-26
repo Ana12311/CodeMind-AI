@@ -51,4 +51,9 @@ public interface AiTaskService {
      * 拉取待处理任务（内部 AI 服务调用）
      */
     List<TaskVO> listPendingTasks(Integer limit);
+
+    /**
+     * 删除任务：中断运行中的进程并逻辑删除任务记录（级联删除关联结果）
+     */
+    void deleteTask(Long id);
 }

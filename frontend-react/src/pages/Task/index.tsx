@@ -6,6 +6,7 @@ import {
   Form,
   Input,
   Modal,
+  Popconfirm,
   Select,
   Space,
   Table,
@@ -16,7 +17,7 @@ import {
 } from 'antd'
 import { PlayCircleOutlined, ReloadOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
-import { createTask, listTasks, getTask } from '@/api/task'
+import { createTask, listTasks, getTask, deleteTask } from '@/api/task'
 import { listProjects } from '@/api/project'
 import { handleRequestError } from '@/utils'
 import type { CreateTaskRequest, Task } from '@/types/task'
@@ -128,6 +129,16 @@ function TaskPage() {
     }
   }
 
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteTask(id)
+      message.success('删除成功')
+      fetchList()
+    } catch (error) {
+      handleRequestError(error)
+    }
+  }
+
   const columns: ColumnsType<Task> = [
     { title: '任务 ID', dataIndex: 'id', key: 'id', ellipsis: true, width: 200 },
     {
@@ -174,6 +185,18 @@ function TaskPage() {
               查看结果
             </Button>
           ) : null}
+          <Popconfirm
+            title="确认删除该任务？"
+            description={record.status === 1 ? '任务正在处理中，删除将中断执行' : undefined}
+            okText="删除"
+            cancelText="取消"
+            okButtonProps={{ danger: true }}
+            onConfirm={() => handleDelete(record.id)}
+          >
+            <Button type="link" size="small" danger>
+              删除
+            </Button>
+          </Popconfirm>
         </Space>
       ),
     },

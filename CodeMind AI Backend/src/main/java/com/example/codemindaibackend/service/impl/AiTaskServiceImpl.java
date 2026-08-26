@@ -265,6 +265,33 @@ public class AiTaskServiceImpl extends ServiceImpl<AiTaskMapper, AiTask> impleme
         return result.getRecords().stream().map(this::toVO).collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional
+    public void deleteTask(Long id) {
+        AiTask task = getById(id);
+        if (task == null) {
+            throw BusinessException.notFound("任务不存在");
+        }
+        projectService.checkProjectAccess(task.getProjectId());
+
+        // 处理中的任务先中断 AI 服务端进程（尽力而为，失败不阻断删除）
+        if (TaskStatus.PROCESSING.getCode().equals(task.getStatus())) {
+            try {
+                aiServiceClient.cancelTask(task.getId());
+            } catch (Exception e) {
+                log.warn("中断 AI 任务失败 taskId={}", task.getId(), e);
+            }
+        }
+
+        // 逻辑删除任务记录
+        removeById(id);
+
+        // 级联删除关联结果记录（若有），避免遗留孤儿结果
+        if (task.getResultId() != null) {
+            reviewResultMapper.deleteById(task.getResultId());
+        }
+    }
+
     /**
      * 超时兜底：扫描仍处 PROCESSING 的任务，超过阈值未收到回调的置为 FAILED。
      * 用于应对 FastAPI 回调失败导致任务永久卡死（无 reaper 机制）的场景。
