@@ -172,6 +172,23 @@
   box-shadow: 0 8px 24px rgba(59, 91, 255, 0.4);
 }
 
+/* 登录/注册切换 */
+.login-switch {
+  margin-top: 18px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 13px;
+}
+.login-switch a {
+  color: #6db3ff;
+  cursor: pointer;
+  margin-left: 4px;
+  transition: color 0.2s;
+}
+.login-switch a:hover {
+  color: #9fd0ff;
+}
+
 /* 底部小字 */
 .login-footer {
   margin-top: 22px;

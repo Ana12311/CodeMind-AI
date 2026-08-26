@@ -1,13 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
 import axios from 'axios'
 import { Button, Form, Input, message } from 'antd'
-import { UserOutlined, LockOutlined, CodeOutlined } from '@ant-design/icons'
+import { UserOutlined, LockOutlined, CodeOutlined, MailOutlined, SmileOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
-import { login as loginApi, fetchCurrentUser } from '@/api/auth'
+import { login as loginApi, register as registerApi, fetchCurrentUser } from '@/api/auth'
 import { useAuthStore } from '@/store/auth'
 import type { ApiResult } from '@/types'
-import type { LoginRequest, User } from '@/types/user'
+import type { RegisterRequest, User } from '@/types/user'
 import './index.css'
+
+type FormValues = {
+  username: string
+  password: string
+  confirmPassword?: string
+  nickname?: string
+  email?: string
+}
 
 // 上升代码符号粒子（静态数组，保证每次渲染一致）
 const PARTICLES: { c: string; left: string; delay: string; dur: string; size: number }[] = [
@@ -43,6 +51,8 @@ const PARTICLES: { c: string; left: string; delay: string; dur: string; size: nu
 
 function Login() {
   const [loading, setLoading] = useState(false)
+  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [form] = Form.useForm<FormValues>()
   const navigate = useNavigate()
   const wrapRef = useRef<HTMLDivElement>(null)
   const glowRef = useRef<HTMLDivElement>(null)
@@ -76,36 +86,45 @@ function Login() {
     return () => wrap.removeEventListener('mousemove', onMove)
   }, [])
 
-  const onFinish = async (values: LoginRequest) => {
+  const switchMode = (m: 'login' | 'register') => {
+    setMode(m)
+    form.resetFields()
+  }
+
+  const onFinish = async (values: FormValues) => {
     setLoading(true)
     try {
-      const { accessToken } = await loginApi(values)
+      if (mode === 'login') {
+        const { accessToken } = await loginApi({ username: values.username, password: values.password })
 
-      // 先落 token，使后续 /me 携带鉴权头；再用表单用户名占位用户信息
-      useAuthStore.getState().setToken(accessToken)
-      useAuthStore.getState().setUser({ id: '', username: values.username } as User)
-
-      try {
-        const me = await fetchCurrentUser()
-        useAuthStore.getState().setUser(me)
-      } catch {
-        // 拉取用户详情失败不阻断登录，重新确保 token 仍在（避免被 401 拦截器登出）
+        // 先落 token，使后续 /me 携带鉴权头；再用表单用户名占位用户信息
         useAuthStore.getState().setToken(accessToken)
-      }
+        useAuthStore.getState().setUser({ id: '', username: values.username } as User)
 
-      message.success('登录成功')
-      navigate('/dashboard', { replace: true })
+        try {
+          const me = await fetchCurrentUser()
+          useAuthStore.getState().setUser(me)
+        } catch {
+          // 拉取用户详情失败不阻断登录，重新确保 token 仍在（避免被 401 拦截器登出）
+          useAuthStore.getState().setToken(accessToken)
+        }
+
+        message.success('登录成功')
+        navigate('/dashboard', { replace: true })
+      } else {
+        const { confirmPassword: _confirm, ...payload } = values
+        await registerApi(payload as RegisterRequest)
+        message.success('注册成功，请登录')
+        switchMode('login')
+      }
     } catch (error) {
+      // 业务错误（code != 200）已由 http 层 toast；这里只兜底传输层 / 401 鉴权错误
       if (axios.isAxiosError(error)) {
         if (!error.response) {
           message.error('网络异常，请检查后端服务是否启动')
-        } else if (error.response.status === 401) {
-          message.error((error.response.data as ApiResult)?.message || '用户名或密码错误')
         } else {
-          message.error((error.response.data as ApiResult)?.message || '登录失败')
+          message.error((error.response.data as ApiResult)?.message || '操作失败')
         }
-      } else {
-        message.error('登录失败')
       }
     } finally {
       setLoading(false)
@@ -146,25 +165,92 @@ function Login() {
           <div className="brand-slogan">让每一行代码都经得起审查</div>
         </div>
 
-        <Form<LoginRequest> onFinish={onFinish} size="large">
-          <Form.Item
-            name="username"
-            rules={[{ required: true, message: '请输入用户名' }]}
-          >
-            <Input prefix={<UserOutlined />} placeholder="用户名" />
-          </Form.Item>
-          <Form.Item
-            name="password"
-            rules={[{ required: true, message: '请输入密码' }]}
-          >
-            <Input.Password prefix={<LockOutlined />} placeholder="密码" />
-          </Form.Item>
+        <Form<FormValues> form={form} onFinish={onFinish} size="large">
+          {mode === 'login' ? (
+            <>
+              <Form.Item
+                name="username"
+                rules={[{ required: true, message: '请输入用户名' }]}
+              >
+                <Input prefix={<UserOutlined />} placeholder="用户名" />
+              </Form.Item>
+              <Form.Item
+                name="password"
+                rules={[{ required: true, message: '请输入密码' }]}
+              >
+                <Input.Password prefix={<LockOutlined />} placeholder="密码" />
+              </Form.Item>
+            </>
+          ) : (
+            <>
+              <Form.Item
+                name="username"
+                rules={[
+                  { required: true, message: '请输入用户名' },
+                  { min: 3, max: 50, message: '用户名长度须在 3-50 之间' },
+                ]}
+              >
+                <Input prefix={<UserOutlined />} placeholder="用户名" />
+              </Form.Item>
+              <Form.Item
+                name="nickname"
+                rules={[{ max: 50, message: '昵称长度不能超过 50' }]}
+              >
+                <Input prefix={<SmileOutlined />} placeholder="昵称（可选）" />
+              </Form.Item>
+              <Form.Item
+                name="email"
+                rules={[{ type: 'email', message: '邮箱格式不正确' }]}
+              >
+                <Input prefix={<MailOutlined />} placeholder="邮箱（可选）" />
+              </Form.Item>
+              <Form.Item
+                name="password"
+                rules={[
+                  { required: true, message: '请输入密码' },
+                  { min: 6, max: 100, message: '密码长度须在 6-100 之间' },
+                ]}
+              >
+                <Input.Password prefix={<LockOutlined />} placeholder="密码" />
+              </Form.Item>
+              <Form.Item
+                name="confirmPassword"
+                dependencies={['password']}
+                rules={[
+                  { required: true, message: '请再次输入密码' },
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      if (!value || getFieldValue('password') === value) {
+                        return Promise.resolve()
+                      }
+                      return Promise.reject(new Error('两次输入的密码不一致'))
+                    },
+                  }),
+                ]}
+              >
+                <Input.Password prefix={<LockOutlined />} placeholder="确认密码" />
+              </Form.Item>
+            </>
+          )}
+
           <Form.Item style={{ marginBottom: 0 }}>
             <Button type="primary" htmlType="submit" block loading={loading}>
-              登录
+              {mode === 'login' ? '登录' : '注册'}
             </Button>
           </Form.Item>
         </Form>
+
+        <div className="login-switch">
+          {mode === 'login' ? (
+            <span>
+              还没有账号？<a onClick={() => switchMode('register')}>去注册</a>
+            </span>
+          ) : (
+            <span>
+              已有账号？<a onClick={() => switchMode('login')}>去登录</a>
+            </span>
+          )}
+        </div>
 
         <div className="login-footer">CODEMIND · 代码智能评审</div>
       </div>

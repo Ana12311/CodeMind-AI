@@ -13,6 +13,15 @@ export interface LoginResponse {
   expiresIn: string
 }
 
+// 注册请求体（对应后端 RegisterRequest DTO）
+export interface RegisterRequest {
+  username: string
+  password: string
+  nickname?: string
+  email?: string
+  phone?: string
+}
+
 // 用户信息（对应后端 UserInfoVO）
 export interface User {
   // 雪花 ID，后端序列化为字符串
