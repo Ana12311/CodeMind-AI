@@ -24,3 +24,12 @@ export interface TaskQuery {
   taskType?: string
   status?: number
 }
+
+// 创建任务请求（对应后端 TaskCreateRequest）
+// 注意：后端任务按项目维度创建，无 fileId 字段
+export interface CreateTaskRequest {
+  projectId: string
+  taskType: string
+  params?: string
+  content?: string
+}

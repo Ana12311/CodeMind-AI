@@ -23,3 +23,13 @@ export function handleRequestError(error: unknown, fallback = '操作失败'): v
   else if (status >= 500) message.error(msg || '服务器内部错误')
   else message.error(msg || fallback)
 }
+
+// 格式化字节数
+export function formatFileSize(bytes: number | string | undefined): string {
+  const n = Number(bytes)
+  if (bytes === undefined || bytes === null || Number.isNaN(n)) return '-'
+  if (n < 1024) return `${n} B`
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
+  if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`
+  return `${(n / 1024 / 1024 / 1024).toFixed(1)} GB`
+}
