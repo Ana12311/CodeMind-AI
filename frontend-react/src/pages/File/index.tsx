@@ -19,7 +19,7 @@ import type { ColumnsType } from 'antd/es/table'
 import { listFiles, uploadFile, getFile, getFileContent, deleteFile } from '@/api/file'
 import CodeViewer from '@/components/CodeViewer'
 import { listProjects } from '@/api/project'
-import { handleRequestError, formatFileSize } from '@/utils'
+import { handleRequestError, formatFileSize, formatTime } from '@/utils'
 import type { FileItem } from '@/types/file'
 import type { Project } from '@/types/project'
 
@@ -145,7 +145,7 @@ function FilePage() {
       width: 110,
       render: (v) => formatFileSize(v),
     },
-    { title: '上传时间', dataIndex: 'createTime', key: 'createTime', width: 180 },
+    { title: '上传时间', dataIndex: 'createTime', key: 'createTime', width: 180, render: (v) => formatTime(v) || '-' },
     { title: 'checksum', dataIndex: 'checksum', key: 'checksum', ellipsis: true },
     {
       title: '操作',
@@ -276,7 +276,7 @@ function FilePage() {
               <Descriptions.Item label="大小">{formatFileSize(detail.fileSize)}</Descriptions.Item>
               <Descriptions.Item label="存储地址">{detail.storageUrl || '-'}</Descriptions.Item>
               <Descriptions.Item label="checksum">{detail.checksum || '-'}</Descriptions.Item>
-              <Descriptions.Item label="上传时间">{detail.createTime || '-'}</Descriptions.Item>
+              <Descriptions.Item label="上传时间">{formatTime(detail.createTime) || '-'}</Descriptions.Item>
             </Descriptions>
             <div style={{ height: 320, marginTop: 12 }}>
               <CodeViewer code={detailContent} fileName={detail.fileName} height="100%" />

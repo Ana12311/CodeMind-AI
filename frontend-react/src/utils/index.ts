@@ -24,6 +24,12 @@ export function handleRequestError(error: unknown, fallback = '操作失败'): v
   else message.error(msg || fallback)
 }
 
+// 将 ISO 时间（2026-08-26T12:54:54）转为可读格式（2026-08-26 12:54:54）
+export function formatTime(value: string | null | undefined): string {
+  if (!value) return ''
+  return value.replace('T', ' ').replace(/\.\d+$/, '')
+}
+
 // 格式化字节数
 export function formatFileSize(bytes: number | string | undefined): string {
   const n = Number(bytes)

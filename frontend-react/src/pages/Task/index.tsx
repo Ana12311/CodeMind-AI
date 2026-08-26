@@ -19,7 +19,7 @@ import { PlayCircleOutlined, ReloadOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import { createTask, listTasks, getTask, deleteTask } from '@/api/task'
 import { listProjects } from '@/api/project'
-import { handleRequestError } from '@/utils'
+import { handleRequestError, formatTime } from '@/utils'
 import type { CreateTaskRequest, Task } from '@/types/task'
 import type { Project } from '@/types/project'
 
@@ -165,8 +165,8 @@ function TaskPage() {
         )
       },
     },
-    { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 180 },
-    { title: '完成时间', dataIndex: 'endTime', key: 'endTime', width: 180, render: (v) => v || '-' },
+    { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 180, render: (v) => formatTime(v) || '-' },
+    { title: '完成时间', dataIndex: 'endTime', key: 'endTime', width: 180, render: (v) => formatTime(v) || '-' },
     {
       title: '操作',
       key: 'action',
@@ -289,9 +289,9 @@ function TaskPage() {
             </Descriptions.Item>
             <Descriptions.Item label="请求参数">{detail.params ?? '-'}</Descriptions.Item>
             <Descriptions.Item label="失败原因">{detail.errorMsg || '-'}</Descriptions.Item>
-            <Descriptions.Item label="创建时间">{detail.createTime || '-'}</Descriptions.Item>
-            <Descriptions.Item label="开始时间">{detail.startTime || '-'}</Descriptions.Item>
-            <Descriptions.Item label="完成时间">{detail.endTime || '-'}</Descriptions.Item>
+            <Descriptions.Item label="创建时间">{formatTime(detail.createTime) || '-'}</Descriptions.Item>
+            <Descriptions.Item label="开始时间">{formatTime(detail.startTime) || '-'}</Descriptions.Item>
+            <Descriptions.Item label="完成时间">{formatTime(detail.endTime) || '-'}</Descriptions.Item>
           </Descriptions>
         )}
       </Modal>

@@ -21,7 +21,7 @@ import type { ColumnsType } from 'antd/es/table'
 import { listProjects, createProject, getProject, deleteProject } from '@/api/project'
 import { listFiles } from '@/api/file'
 import { listTasks } from '@/api/task'
-import { handleRequestError } from '@/utils'
+import { handleRequestError, formatTime } from '@/utils'
 import type { Project, CreateProjectRequest } from '@/types/project'
 
 interface ProjectDetail {
@@ -120,8 +120,8 @@ function ProjectPage() {
       render: (v: number) =>
         v === 1 ? <Tag color="green">进行中</Tag> : <Tag>归档</Tag>,
     },
-    { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 180 },
-    { title: '更新时间', dataIndex: 'updateTime', key: 'updateTime', width: 180 },
+    { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 180, render: (v) => formatTime(v) || '-' },
+    { title: '更新时间', dataIndex: 'updateTime', key: 'updateTime', width: 180, render: (v) => formatTime(v) || '-' },
     {
       title: '操作',
       key: 'action',
@@ -258,10 +258,10 @@ function ProjectPage() {
                 {detail.project.status === 1 ? '进行中' : '归档'}
               </Descriptions.Item>
               <Descriptions.Item label="创建时间">
-                {detail.project.createTime || '-'}
+                {formatTime(detail.project.createTime) || '-'}
               </Descriptions.Item>
               <Descriptions.Item label="更新时间">
-                {detail.project.updateTime || '-'}
+                {formatTime(detail.project.updateTime) || '-'}
               </Descriptions.Item>
             </Descriptions>
           </>

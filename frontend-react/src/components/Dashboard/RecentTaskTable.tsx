@@ -1,6 +1,7 @@
 import { Table, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import type { Task } from '@/types/task'
+import { formatTime } from '@/utils'
 
 const statusColor: Record<number, string> = {
   0: 'default',
@@ -21,7 +22,7 @@ const columns: ColumnsType<Task> = [
       <Tag color={statusColor[record.status ?? 0]}>{record.statusDesc ?? '-'}</Tag>
     ),
   },
-  { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 200 },
+  { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 200, render: (v) => formatTime(v) || '-' },
 ]
 
 interface RecentTaskTableProps {

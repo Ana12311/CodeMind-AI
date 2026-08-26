@@ -21,7 +21,7 @@ import { getReviewResult, listReviewResults } from '@/api/result'
 import { getTask } from '@/api/task'
 import { listProjects } from '@/api/project'
 import { listFiles, getFileContent } from '@/api/file'
-import { handleRequestError } from '@/utils'
+import { handleRequestError, formatTime } from '@/utils'
 import { parseReviewDetail, parseLineNumber } from '@/types/result'
 import type { ReviewDetail } from '@/types/result'
 import type { ReviewResult } from '@/types/review'
@@ -211,7 +211,7 @@ function ResultPage() {
             )}
           </Descriptions.Item>
           <Descriptions.Item label="执行时间">
-            {task?.endTime ?? task?.startTime ?? task?.createTime ?? '-'}
+            {formatTime(task?.endTime ?? task?.startTime ?? task?.createTime) || '-'}
           </Descriptions.Item>
         </Descriptions>
         {summary && (
