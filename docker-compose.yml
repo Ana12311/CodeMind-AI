@@ -126,6 +126,24 @@ services:
       - codemind-network
 
   # -----------------------------------------------------------
+  # Frontend（React / Nginx）：静态站点 + /api 反代 backend，80
+  # 依赖 backend 就绪后启动
+  # -----------------------------------------------------------
+  frontend:
+    build:
+      context: "./frontend-react"
+    image: codemind-frontend:latest
+    container_name: codemind-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_HOST_PORT:-80}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - codemind-network
+
+  # -----------------------------------------------------------
   # AI Service（Python / FastAPI）：AI 执行，8000
   # bge-m3 模型宿主机挂载（不进镜像）；回调 backend 用服务名
   # -----------------------------------------------------------
