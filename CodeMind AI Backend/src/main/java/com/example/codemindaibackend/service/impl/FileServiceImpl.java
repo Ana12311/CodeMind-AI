@@ -5,9 +5,11 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.codemindaibackend.common.exception.BusinessException;
+import com.example.codemindaibackend.common.exception.ErrorCode;
 import com.example.codemindaibackend.common.result.PageResult;
 import com.example.codemindaibackend.dto.file.FileQueryRequest;
 import com.example.codemindaibackend.entity.CodeFile;
+import com.example.codemindaibackend.entity.Project;
 import com.example.codemindaibackend.mapper.CodeFileMapper;
 import com.example.codemindaibackend.security.SecurityUtils;
 import com.example.codemindaibackend.service.FileService;
@@ -31,6 +33,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -98,7 +101,7 @@ public class FileServiceImpl extends ServiceImpl<CodeFileMapper, CodeFile> imple
         if (file == null) {
             throw BusinessException.notFound("文件不存在");
         }
-        projectService.checkProjectAccess(file.getProjectId());
+        checkFileAccess(file);
         return toVO(file);
     }
 
@@ -108,7 +111,7 @@ public class FileServiceImpl extends ServiceImpl<CodeFileMapper, CodeFile> imple
         if (file == null) {
             throw BusinessException.notFound("文件不存在");
         }
-        projectService.checkProjectAccess(file.getProjectId());
+        checkFileAccess(file);
         // 小文本文件直存于 DB，大文件回退存储读取
         if (StringUtils.hasText(file.getContent())) {
             return file.getContent();
@@ -165,10 +168,28 @@ public class FileServiceImpl extends ServiceImpl<CodeFileMapper, CodeFile> imple
         if (file == null) {
             throw BusinessException.notFound("文件不存在");
         }
-        projectService.checkProjectAccess(file.getProjectId());
+        checkFileAccess(file);
         removeById(id);
         // 委托存储抽象删除物理文件
         storageService.delete(file.getFilePath());
+    }
+
+    /**
+     * 数据权限：项目存在则校验负责人/管理员；项目已删除退化为校验文件上传人/管理员，保证孤儿文件可访问/删除。
+     */
+    private void checkFileAccess(CodeFile file) {
+        if (SecurityUtils.isAdmin()) {
+            return;
+        }
+        Project project = projectService.getProjectRaw(file.getProjectId());
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        if (project != null) {
+            if (!Objects.equals(currentUserId, project.getOwnerId())) {
+                throw new BusinessException(ErrorCode.FORBIDDEN, "无权限操作该项目");
+            }
+        } else if (!Objects.equals(currentUserId, file.getCreateBy())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "无权限访问该文件");
+        }
     }
 
     /**
