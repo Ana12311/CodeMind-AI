@@ -1,8 +1,29 @@
 import { useEffect, useRef } from 'react'
 import { Empty } from 'antd'
 import Editor, { loader, type OnMount } from '@monaco-editor/react'
-import * as monaco from 'monaco-editor'
+import * as monaco from 'monaco-editor/editor/editor.api'
 import editorWorker from 'monaco-editor/editor/editor.worker?worker'
+// 按需注册常用语言（仅元数据 + 懒加载 tokenizer），避免把 monaco 全部语言打进包
+import 'monaco-editor/languages/definitions/java/register'
+import 'monaco-editor/languages/definitions/python/register'
+import 'monaco-editor/languages/definitions/javascript/register'
+import 'monaco-editor/languages/definitions/typescript/register'
+import 'monaco-editor/languages/definitions/go/register'
+import 'monaco-editor/languages/definitions/cpp/register' // 注册 c + cpp
+import 'monaco-editor/languages/definitions/csharp/register'
+import 'monaco-editor/languages/definitions/ruby/register'
+import 'monaco-editor/languages/definitions/php/register'
+import 'monaco-editor/languages/definitions/kotlin/register'
+import 'monaco-editor/languages/definitions/swift/register'
+import 'monaco-editor/languages/definitions/rust/register'
+import 'monaco-editor/languages/definitions/sql/register'
+import 'monaco-editor/languages/definitions/shell/register'
+import 'monaco-editor/languages/definitions/html/register'
+import 'monaco-editor/languages/definitions/css/register'
+import 'monaco-editor/languages/definitions/markdown/register'
+import 'monaco-editor/languages/definitions/xml/register'
+import 'monaco-editor/languages/definitions/yaml/register'
+import 'monaco-editor/languages/features/json/register.js'
 
 // 自托管 monaco（不依赖 CDN）+ 基础 worker，避免控制台报错
 self.MonacoEnvironment = {

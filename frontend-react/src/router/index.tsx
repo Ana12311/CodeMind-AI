@@ -6,11 +6,11 @@ import MainLayout from '@/components/layout/MainLayout'
 import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
 import Project from '@/pages/Project'
-import File from '@/pages/File'
 import Task from '@/pages/Task'
 
-// Result 页依赖 Monaco，体积大，按需懒加载避免首屏加载编辑器
+// Result / File 页依赖 Monaco，体积大，按需懒加载避免首屏加载编辑器
 const Result = lazy(() => import('@/pages/Result'))
+const File = lazy(() => import('@/pages/File'))
 
 function AppRouter() {
   return useRoutes([
@@ -26,7 +26,11 @@ function AppRouter() {
         { index: true, element: <Navigate to="/dashboard" replace /> },
         { path: 'dashboard', element: <Dashboard /> },
         { path: 'project', element: <Project /> },
-        { path: 'file', element: <File /> },
+        { path: 'file', element: (
+            <Suspense fallback={<Spin style={{ display: 'block', margin: '120px auto' }} />}>
+              <File />
+            </Suspense>
+          ) },
         { path: 'task', element: <Task /> },
         {
           path: 'result',
