@@ -24,10 +24,19 @@ export function handleRequestError(error: unknown, fallback = '操作失败'): v
   else message.error(msg || fallback)
 }
 
-// 将 ISO 时间（2026-08-26T12:54:54）转为可读格式（2026-08-26 12:54:54）
+// 将后端时间转为北京时间显示。后端 LocalDateTime 按容器 UTC 时钟生成（无时区标记），
+// 这里按 UTC 解析后加 8 小时得北京时间，并去掉毫秒。
+// 例：2026-08-26T13:02:26 -> 2026-08-26 21:02:26
 export function formatTime(value: string | null | undefined): string {
   if (!value) return ''
-  return value.replace('T', ' ').replace(/\.\d+$/, '')
+  const date = new Date(`${value}Z`)
+  if (Number.isNaN(date.getTime())) {
+    return value.replace('T', ' ').replace(/\.\d+$/, '')
+  }
+  return new Date(date.getTime() + 8 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 19)
+    .replace('T', ' ')
 }
 
 // 格式化字节数
