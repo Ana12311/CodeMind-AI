@@ -101,6 +101,8 @@ services:
       AI_SERVICE_URL: http://ai-service:8000
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      AI_TASK_REAPER_TIMEOUT_SECONDS: ${AI_TASK_REAPER_TIMEOUT_SECONDS:-300}
+      AI_TASK_REAPER_INTERVAL_MS: ${AI_TASK_REAPER_INTERVAL_MS:-60000}
     volumes:
       - backend-uploads:/app/uploads
     depends_on:
