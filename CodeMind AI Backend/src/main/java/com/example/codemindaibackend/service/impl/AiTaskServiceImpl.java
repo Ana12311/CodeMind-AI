@@ -24,6 +24,8 @@ import com.example.codemindaibackend.vo.ai.TaskVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -53,6 +55,10 @@ public class AiTaskServiceImpl extends ServiceImpl<AiTaskMapper, AiTask> impleme
     private final AiReviewResultMapper reviewResultMapper;
 
     private final AiServiceClient aiServiceClient;
+
+    /** 任务超时阈值（秒），超过仍未回调则兜底置为失败 */
+    @Value("${ai.task.reaper-timeout-seconds:300}")
+    private long reaperTimeoutSeconds;
 
     public AiTaskServiceImpl(ProjectService projectService,
                              AiReviewResultMapper reviewResultMapper,
@@ -257,6 +263,26 @@ public class AiTaskServiceImpl extends ServiceImpl<AiTaskMapper, AiTask> impleme
                         .eq(AiTask::getStatus, TaskStatus.WAITING.getCode())
                         .orderByAsc(AiTask::getCreateTime));
         return result.getRecords().stream().map(this::toVO).collect(Collectors.toList());
+    }
+
+    /**
+     * 超时兜底：扫描仍处 PROCESSING 的任务，超过阈值未收到回调的置为 FAILED。
+     * 用于应对 FastAPI 回调失败导致任务永久卡死（无 reaper 机制）的场景。
+     */
+    @Scheduled(fixedDelayString = "${ai.task.reaper-interval-ms:60000}")
+    public void reapTimeoutTasks() {
+        LocalDateTime threshold = LocalDateTime.now().minusSeconds(reaperTimeoutSeconds);
+        List<AiTask> stale = list(new LambdaQueryWrapper<AiTask>()
+                .eq(AiTask::getStatus, TaskStatus.PROCESSING.getCode())
+                .isNotNull(AiTask::getStartTime)
+                .le(AiTask::getStartTime, threshold));
+        for (AiTask task : stale) {
+            task.setStatus(TaskStatus.FAILED.getCode());
+            task.setErrorMsg("任务超时：AI 服务回调超时");
+            task.setEndTime(LocalDateTime.now());
+            updateById(task);
+            log.warn("任务超时兜底置为失败 taskId={}", task.getId());
+        }
     }
 
     /**

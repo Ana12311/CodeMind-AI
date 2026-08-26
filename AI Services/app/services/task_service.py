@@ -94,6 +94,9 @@ class TaskService:
             context = ""
             if request.taskType.upper() == "CODE_REVIEW":
                 context = self._build_code_context()
+                if not context.strip():
+                    # 无代码上下文时明确失败，不静默生成无上下文评审
+                    raise RuntimeError("无可用代码上下文：代码目录为空或检索无命中，已终止评审")
             result = self.workflow.run(
                 task_id=task_id,
                 task=request.content,
