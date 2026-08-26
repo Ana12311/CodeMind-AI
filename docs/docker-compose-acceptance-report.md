@@ -102,7 +102,7 @@ codemind-redis        Up (healthy)
 | 5. Backend 调 FastAPI（POST /api/tasks） | ✅ 通过，200，任务受理 |
 | 6. Agent 执行（Planner → Worker → Reviewer，mock LLM） | ✅ 通过，`reviewer 审核完成` |
 | 7. RAG 检索（bge-m3） | ✅ 通过（加载模型 + 编码 9 向量 + 检索命中 3 代码块） |
-| 8. LLM 分析 | ⚠️ mock 替代（真实 LLM 待 DEEPSEEK_API_KEY，见 G4） |
+| 8. LLM 分析 | ✅ deepseek 真实调用（7 次 chat/completions 200） |
 | 9. Callback 回调 Backend | ✅ 通过（HMAC 签名修复后） |
 | 10. Java 保存结果 | ✅ 通过（ai_review_result 落库，detail 含检索代码上下文） |
 
@@ -145,11 +145,11 @@ POST http://backend:8080/api/ai/task/callback "HTTP/1.1 403"
 - 根因：`.dockerignore` 有意排除 `docs/`（本地开发脚手架），Dockerfile 未复制、编排未挂载 docs 目录。
 - 修复：编排将 `./AI Services/docs` 只读挂载到 `/app/docs`，`RAG_DOCS_DIR=docs` 入库成功（`RAG 入库 docs -> 1 块`），告警消失。
 
-### G4.【部分修复】真实 LLM 未实测 / bge-m3 检索已实测
+### G4.【已修复】真实 LLM 与 bge-m3 检索均已实测
 
-- 真实 LLM：无 `DEEPSEEK_API_KEY`，本次 `LLM_PROVIDER=mock`，Agent 流程通过但「LLM 分析」为 mock 输出。**待提供真实 key 后复测。**
+- 真实 LLM：`DEEPSEEK_API_KEY` 原在 `AI Services/.env`（本阶段同步到根 `.env`），`LLM_PROVIDER=deepseek`。实测 7 次 `POST https://api.deepseek.com/chat/completions` 全部 200，`reviewer 审核完成`，评审结果 detailLen 7505（真实 LLM 输出）。
 - bge-m3 检索：已实测通过。编排挂载 `./codes` 到 `/code` 并设 `CODE_REVIEW_DIR=/code`；`CodeLoader` 加载 2 文件 → bge-m3 编码 9 向量 → 检索命中 3 代码块，代码上下文进入评审结果（detail 含 OrderService / user_repo / SQL 注入内容）。新增 `CODE_REVIEW_MIN_SCORE=0.3`（跨语言通用查询实测 0.3~0.45，低于默认 0.5 会恒空）。
 
 ---
 
-**验收结论**：Docker Compose 总控编排达标——一条命令启动四服务、网络互通、健康检查、模型挂载、环境变量注入、数据持久化均正确；全链路（含回调 HMAC 签名）已打通至 SUCCESS；bge-m3 检索（加载 + 编码 + 检索）实测通过。剩余项：真实 LLM（需 `DEEPSEEK_API_KEY`）待配置后复测。
+**验收结论**：Docker Compose 总控编排达标——一条命令启动四服务、网络互通、健康检查、模型挂载、环境变量注入、数据持久化均正确；全链路（含回调 HMAC 签名、真实 LLM deepseek、bge-m3 检索）已全部实测通过，无剩余阻塞项。
