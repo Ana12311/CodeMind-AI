@@ -117,6 +117,7 @@ class CodeSplitter:
         header = (
             f"[文件: {doc.metadata.get('file_name', '')}]"
             f"[类: {class_name or '-'}][方法: {method_name or '-'}]"
+            f"[起始行: {line}]"
         )
         return Document(
             content=f"{header}\n{code.strip()}",
