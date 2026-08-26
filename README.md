@@ -251,6 +251,15 @@ cp .env.example .env
 - `INTERNAL_SECRET`：Java ↔ Python 内部服务 HMAC 签名密钥
 - `ADMIN_PASSWORD`：管理员种子账号密码（首次启动自动创建）
 - `DEEPSEEK_API_KEY`：DeepSeek API Key（`LLM_PROVIDER=deepseek` 时必填）
+- `EMBEDDING_PROVIDER`：`hashing`（默认，离线开箱即用）/ `bge-m3`（语义检索）
+
+> 默认 `hashing` 无需任何模型。切换 bge-m3 需先下载模型（`AI Services/models/` 已 gitignore，不入库）：
+>
+> ```bash
+> huggingface-cli download BAAI/bge-m3 --local-dir "AI Services/models/bge-m3"
+> ```
+>
+> 再把 `.env` 的 `EMBEDDING_PROVIDER` 改为 `bge-m3`，重启即可。
 
 ### docker compose up
 
