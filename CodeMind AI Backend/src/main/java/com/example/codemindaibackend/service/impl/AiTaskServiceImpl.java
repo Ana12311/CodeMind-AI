@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.codemindaibackend.client.AiServiceClient;
 import com.example.codemindaibackend.common.enums.TaskStatus;
 import com.example.codemindaibackend.common.exception.BusinessException;
+import com.example.codemindaibackend.common.exception.ErrorCode;
 import com.example.codemindaibackend.common.result.PageResult;
 import com.example.codemindaibackend.dto.ai.AiTaskCallbackRequest;
 import com.example.codemindaibackend.dto.ai.TaskCreateRequest;
@@ -15,6 +16,7 @@ import com.example.codemindaibackend.dto.ai.TaskResultUpdateRequest;
 import com.example.codemindaibackend.dto.ai.TaskStatusUpdateRequest;
 import com.example.codemindaibackend.entity.AiReviewResult;
 import com.example.codemindaibackend.entity.AiTask;
+import com.example.codemindaibackend.entity.Project;
 import com.example.codemindaibackend.mapper.AiReviewResultMapper;
 import com.example.codemindaibackend.mapper.AiTaskMapper;
 import com.example.codemindaibackend.security.SecurityUtils;
@@ -37,6 +39,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -272,7 +275,18 @@ public class AiTaskServiceImpl extends ServiceImpl<AiTaskMapper, AiTask> impleme
         if (task == null) {
             throw BusinessException.notFound("任务不存在");
         }
-        projectService.checkProjectAccess(task.getProjectId());
+        // 数据权限：项目存在则校验负责人/管理员；项目已删除退化为校验任务提交人/管理员，保证孤儿任务可删除
+        if (!SecurityUtils.isAdmin()) {
+            Project project = projectService.getProjectRaw(task.getProjectId());
+            Long currentUserId = SecurityUtils.getCurrentUserId();
+            if (project != null) {
+                if (!Objects.equals(currentUserId, project.getOwnerId())) {
+                    throw new BusinessException(ErrorCode.FORBIDDEN, "无权限操作该项目");
+                }
+            } else if (!Objects.equals(currentUserId, task.getSubmitBy())) {
+                throw new BusinessException(ErrorCode.FORBIDDEN, "无权限删除该任务");
+            }
+        }
 
         // 处理中的任务先中断 AI 服务端进程（尽力而为，失败不阻断删除）
         if (TaskStatus.PROCESSING.getCode().equals(task.getStatus())) {

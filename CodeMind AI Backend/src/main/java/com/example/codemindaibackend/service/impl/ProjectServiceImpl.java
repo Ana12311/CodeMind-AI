@@ -140,6 +140,11 @@ public class ProjectServiceImpl extends ServiceImpl<ProjectMapper, Project> impl
     }
 
     @Override
+    public Project getProjectRaw(Long id) {
+        return getById(id);
+    }
+
+    @Override
     public List<Long> listOwnedProjectIds() {
         return this.lambdaQuery()
                 .eq(Project::getOwnerId, SecurityUtils.getCurrentUserId())

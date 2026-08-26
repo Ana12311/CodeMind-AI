@@ -4,6 +4,7 @@ import com.example.codemindaibackend.common.result.PageResult;
 import com.example.codemindaibackend.dto.project.ProjectCreateRequest;
 import com.example.codemindaibackend.dto.project.ProjectQueryRequest;
 import com.example.codemindaibackend.dto.project.ProjectUpdateRequest;
+import com.example.codemindaibackend.entity.Project;
 import com.example.codemindaibackend.vo.project.ProjectVO;
 
 import java.util.List;
@@ -44,6 +45,11 @@ public interface ProjectService {
      * 校验项目访问权限（负责人或管理员），无权限/不存在抛异常
      */
     void checkProjectAccess(Long projectId);
+
+    /**
+     * 查询项目实体（不校验权限，项目已逻辑删除时返回 null）
+     */
+    Project getProjectRaw(Long id);
 
     /**
      * 当前用户负责的项目 ID 列表
