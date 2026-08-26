@@ -1,6 +1,8 @@
 # CodeMind-AI
 
-AI 驱动的智能代码审查平台。
+**AI Code Review Platform** — AI 驱动的智能代码审查平台。
+
+`React` · `Spring Boot` · `FastAPI` · `RAG` · `LLM` · `Docker Compose`
 
 前端（React）负责交互与结果可视化，Java 后端（Spring Boot）负责业务、权限与任务编排，Python 服务（FastAPI）负责 Agent、RAG 与 LLM 调用。三者通过 HTTP + 异步回调解耦，Docker Compose 一键部署。
 
@@ -322,10 +324,9 @@ npm run dev
 
 ## Screenshots
 
-<!-- 截图占位：登录页 -->
-<!-- 截图占位：项目 / 文件管理 -->
-<!-- 截图占位：AI 任务列表 -->
-<!-- 截图占位：审查结果可视化（Monaco 高亮定位） -->
+<!-- 截图占位：Dashboard（仪表盘） -->
+<!-- 截图占位：Task（AI 任务列表） -->
+<!-- 截图占位：AI Result（审查结果可视化，Monaco 高亮定位） -->
 
 ---
 
