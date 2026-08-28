@@ -333,9 +333,17 @@ npm run dev
 
 ## Screenshots
 
-<!-- 截图占位：Dashboard（仪表盘） -->
-<!-- 截图占位：Task（AI 任务列表） -->
-<!-- 截图占位：AI Result（审查结果可视化，Monaco 高亮定位） -->
+**Dashboard（仪表盘）**
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+**Task（AI 任务列表）**
+
+![Task](docs/screenshots/task.png)
+
+**AI Result（审查结果可视化，Monaco 高亮定位）**
+
+![AI Result](docs/screenshots/result.png)
 
 ---
 
